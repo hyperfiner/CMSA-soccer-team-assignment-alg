@@ -3,6 +3,7 @@ warnings.filterwarnings("ignore", category=UserWarning, message="Could not impor
 import pandas as pd
 import numpy as np
 import os
+import json
 
 def delete_unneeded_columns(data_frame):
 
@@ -245,7 +246,8 @@ data_frame = add_identifier(data_frame)
 
 n_teams = 6
 team_colors = ["Fandango","Mikado","Gamboge","Amaranth","Glaucous","Vermilion"]
-player_pairs = [[REDACTED]]
+with open("input/2024_Fall/Fall24_Open_player_pairs.json", "r", encoding="utf-8") as f:
+    player_pairs = json.load(f)
 
 # Make pseudo-random team assignments
 randomized_data_frame = make_team_assignments(data_frame,n_teams,team_colors)
