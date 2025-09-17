@@ -64,9 +64,12 @@ def add_identifier(data_frame):
   return data_frame
 
 def make_team_assignments(data_frame, n_teams, team_colors):
+
+  data_frame["Assigned"] = False
+  data_frame["Do Not Reassign"] = False
  
   # Create an empty column to store the team assignment
-  data_frame['Team'] = np.nan
+  data_frame["Team"] = np.nan
   last_assigned_team = 0
  
   ## Goalkeeper is a special case
@@ -81,9 +84,12 @@ def make_team_assignments(data_frame, n_teams, team_colors):
   for idx,row in temp_shuffled_data_frame.iterrows():
     
     # Pull out the unique identifier for this registrant
-    unique_ID = temp_shuffled_data_frame.loc[idx,'Unique_ID']
+    unique_ID = temp_shuffled_data_frame.loc[idx,"Unique_ID"]
     # Assign the registrant to the next team
-    data_frame.loc[unique_ID,'Team'] = team_colors[last_assigned_team%n_teams]
+    data_frame.loc[unique_ID,"Team"] = team_colors[last_assigned_team%n_teams]
+    data_frame.loc[unique_ID,"Assigned"] = True
+    data_frame.loc[unique_ID,"Do Not Reassign"] = True # Goalkeepers should not be swappable later on
+    print("I'm assigning {0} {1} to {2}".format(data_frame.loc[unique_ID,"First Name"],data_frame.loc[unique_ID,"Last Name"],team_colors[last_assigned_team%n_teams]))
     last_assigned_team += 1
 
   ## Randomly assign players separately in 
@@ -104,21 +110,20 @@ def make_team_assignments(data_frame, n_teams, team_colors):
       for idx,row in temp_shuffled_data_frame.iterrows():
         
         # Pull out the unique identifier for this registrant
-        unique_ID = temp_shuffled_data_frame.loc[idx,'Unique_ID']
+        unique_ID = temp_shuffled_data_frame.loc[idx,"Unique_ID"]
+
+        # If the player already has a team assignment skip (this should only be true for secondary goalkeepers)
+        if data_frame.loc[unique_ID,"Assigned"] == True:
+          continue
         # Assign the registrant to the next team
-        data_frame.loc[unique_ID,'Team'] = team_colors[last_assigned_team%n_teams]
+        data_frame.loc[unique_ID,"Team"] = team_colors[last_assigned_team%n_teams]
+        data_frame.loc[unique_ID,"Assigned"] = True
+        print("I'm assigning {0} {1} to {2}".format(data_frame.loc[unique_ID,"First Name"],data_frame.loc[unique_ID,"Last Name"],team_colors[last_assigned_team%n_teams]))
         last_assigned_team += 1
 
   return data_frame
 
 def reassign_player_pairs(data_frame,player_pairs):
-
-  data_frame["Do Not Reassign"] = False
-
-  ## This is a test
-  me = data_frame[(data_frame["First Name"] == "Rob") & (data_frame["Last Name"] == "Fine")]
-  me.reset_index(drop=True)
-  my_unique_ID = data_frame.loc[0,"Do Not Reassign"] = True
 
   for pair in player_pairs:
     player_stay = pair[1].split()
@@ -182,7 +187,7 @@ def reassign_player_pairs(data_frame,player_pairs):
 def sort_data_by_team(data_frame):
 
   # Sort data_frame by team
-  sorted_data_frame = data_frame.sort_values(by='Team')
+  sorted_data_frame = data_frame.sort_values(by="Team")
   # Reset the index after sorting (optional, to get a clean sequential index)
   sorted_data_frame.reset_index(drop=True, inplace=True)
 
@@ -193,12 +198,12 @@ def print_stats(data_frame,team_colors,summary_file_path):
   columns_to_skip = ["First Name","Last Name","Friend","Unique_ID","Do Not Reassign"]
   summary_table = []
 
-  # Loop through each column except 'Team' to get the counts per team
+  # Loop through each column except "Team" to get the counts per team
   for column in data_frame.columns:
     if column in columns_to_skip: continue
-    if column != 'Team':
-      #summary_table[column] = data_frame.groupby('Team')[column].value_counts()
-      crosstab = pd.crosstab(data_frame['Team'], data_frame[column])
+    if column != "Team":
+      #summary_table[column] = data_frame.groupby("Team")[column].value_counts()
+      crosstab = pd.crosstab(data_frame["Team"], data_frame[column])
       summary_table.append(crosstab)
 
   # Concatenate all summary tables into a single DataFrame
@@ -261,7 +266,7 @@ print_stats(randomized_data_frame,team_colors,summary_file_path)
 sorted_data_frame = sort_data_by_team(randomized_data_frame)
 
 # Remove columns we don't need written out
-columns_to_exclude_from_output = ["Friend","Unique_ID","Do Not Reassign"]
+columns_to_exclude_from_output = ["Friend","Unique_ID","Assigned","Do Not Reassign"]
 data_frame_to_write = sorted_data_frame.drop(columns=columns_to_exclude_from_output,errors='ignore')
 
 # Write the rearranged DataFrame back to a new CSV file
